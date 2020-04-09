@@ -3,6 +3,7 @@
 namespace Hiraeth\Middleware;
 
 use Hiraeth;
+use Exception;
 
 use Psr\Http\Server\MiddlewareInterface as Middleware;
 use Psr\Http\Server\RequestHandlerInterface as Handler;
@@ -38,16 +39,21 @@ class RefererAttribute implements Middleware
 	 */
 	public function process(Request $request, Handler $handler): Response
 	{
-		$referer = $this->factory->createServerRequest('GET', $request->getHeaderLine('Referer'));
-		$query   = [];
+		$query = [];
 
-		if ($referer->getUri()->getQuery()) {
-			parse_str($referer->getUri()->getQuery(), $query);
+		try {
+			$referer = $this->factory->createServerRequest('GET', $request->getHeaderLine('Referer'));
+
+			if ($referer->getUri()->getQuery()) {
+				parse_str($referer->getUri()->getQuery(), $query);
+			}
+
+			$referer = $referer->withQueryParams($query);
+
+		} catch (Exception $e) {
+			$referer = NULL;
 		}
 
-		return $handler->handle($request->withAttribute(
-			'_referer',
-			$referer->withQueryParams($query)
-		));
+		return $handler->handle($request->withAttribute('_referer', $referer));
 	}
 }
